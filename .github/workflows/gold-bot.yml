@@ -8,8 +8,9 @@ on:
   workflow_dispatch:
 
 jobs:
-  signal:
+  morning:
     runs-on: ubuntu-latest
+    if: github.event.schedule == '0 0 * * *' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -19,3 +20,29 @@ jobs:
       - run: python bot.py
         env:
           SESSION: MORNING
+
+  ny_open:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 12 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pandas
+      - run: python bot.py
+        env:
+          SESSION: NY_OPEN
+
+  ny_close:
+    runs-on: ubuntu-latest
+    if: github.event.schedule == '0 20 * * *'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests pandas
+      - run: python bot.py
+        env:
+          SESSION: NY_CLOSE
