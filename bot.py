@@ -124,15 +124,15 @@ def run():
         reasons = bear
     entry = cur
     if action == "LONG":
-        sl = cur - adr * 0.5
-        tp1 = cur + adr * 0.5
-        tp2 = cur + adr
-        tp3 = cur + adr * 1.5
-    else:
-        sl = cur + adr * 0.5
-        tp1 = cur - adr * 0.5
-        tp2 = cur - adr
-        tp3 = cur - adr * 1.5
+    sl = cur - 18
+    tp1 = cur + 18
+    tp2 = cur + 27
+    tp3 = cur + 36
+else:
+    sl = cur + 18
+    tp1 = cur - 18
+    tp2 = cur - 27
+    tp3 = cur - 36
     sl_pips = abs(entry - sl) * 10
     rr = abs(tp1 - entry) / abs(entry - sl)
     text = "GOLD " + action
