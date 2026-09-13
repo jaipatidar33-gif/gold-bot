@@ -6,8 +6,9 @@ CI = "5885172416"
 DK = "a5b46acb32794be5b116e70884a6d95a"
 
 def fetch(i, s):
-    u = "https://api.twelvedata.com/time_series?symbol=XAU/USD&interval=" + i + "&outputsize=" + str(s) + "&apikey=" + DK
-    r = requests.get(u, timeout=30).json()
+    u = "https://api.twelvedata.com/time_series"
+    p = {"symbol": "XAU/USD", "interval": i, "outputsize": s, "apikey": DK}
+    r = requests.get(u, params=p, timeout=30).json()
     if "values" not in r:
         return None
     d = pd.DataFrame(r["values"])
@@ -36,15 +37,19 @@ def rsi(a, p=14):
         return 100
     return 100 - 100 / (1 + (g / p) / (l / p))
 
-def run(session):
+def run():
     data = {}
-    for n, i, s in [("daily", "1day", 150), ("h1", "1h", 250), ("m5", "5min", 300)]:
+    tfs = [("daily", "1day", 150), ("h4", "4h", 200), ("h1", "1h", 250), ("m15", "15min", 200), ("m5", "5min", 200)]
+    for n, i, s in tfs:
         data[n] = fetch(i, s)
-        time.sleep(10)
-    if data["daily"] is None or data["h1"] is None or data["m5"] is None:
+        time.sleep(8)
+    if any(v is None for v in data.values()):
+        print("Fetch failed")
         return
     daily = data["daily"]
+    h4 = data["h4"]
     h1 = data["h1"]
+    m15 = data["m15"]
     m5 = data["m5"]
     cur = m5["close"].iloc[-1]
     bull = []
@@ -57,71 +62,90 @@ def run(session):
     else:
         bear.append("Below 50%")
     adr = (daily.tail(30)["high"] - daily.tail(30)["low"]).mean()
+    if h4.iloc[-1]["close"] > h4["high"].iloc[-12:-1].max():
+        bull.append("4H BOS UP")
+    if h4.iloc[-1]["close"] < h4["low"].iloc[-12:-1].min():
+        bear.append("4H BOS DN")
+    if h1.iloc[-1]["close"] > h1["high"].iloc[-15:-1].max():
+        bull.append("1H MSS UP")
+    if h1.iloc[-1]["close"] < h1["low"].iloc[-15:-1].min():
+        bear.append("1H MSS DN")
+    if m15.iloc[-1]["close"] > m15["high"].iloc[-10:-1].max():
+        bull.append("15M MSS UP")
+    if m15.iloc[-1]["close"] < m15["low"].iloc[-10:-1].min():
+        bear.append("15M MSS DN")
     closes = h1["close"].tolist()
+    e50 = ema(closes, 50)
     e200 = ema(closes, 200)
+    if cur > e50 and e50 > e200:
+        bull.append("EMA50>200")
+    if cur < e50 and e50 < e200:
+        bear.append("EMA50<200")
     if cur > e200:
         bull.append("Above EMA200")
     else:
         bear.append("Below EMA200")
     r = rsi(closes)
     if r < 30:
-        bull.append("RSI Oversold " + str(round(r, 1)))
+        bull.append("RSI Oversold")
     if r > 70:
-        bear.append("RSI Overbought " + str(round(r, 1)))
+        bear.append("RSI Overbought")
     if 50 < r < 70:
-        bull.append("RSI Bullish " + str(round(r, 1)))
+        bull.append("RSI Bullish")
     if 30 < r < 50:
-        bear.append("RSI Bearish " + str(round(r, 1)))
+        bear.append("RSI Bearish")
+    m_now = ema(closes[-50:], 12) - ema(closes[-50:], 26)
+    m_prev = ema(closes[-51:-1], 12) - ema(closes[-51:-1], 26)
+    if m_now > 0 and m_prev <= 0:
+        bull.append("MACD UP")
+    if m_now < 0 and m_prev >= 0:
+        bear.append("MACD DN")
+    if m_now > 0:
+        bull.append("MACD Positive")
+    else:
+        bear.append("MACD Negative")
+    pdh = daily["high"].iloc[-2]
+    pdl = daily["low"].iloc[-2]
+    if abs(cur - pdh) < adr * 0.25:
+        bear.append("Near PDH")
+    if abs(cur - pdl) < adr * 0.25:
+        bull.append("Near PDL")
     bS = len(bull)
     sS = len(bear)
     conf = max(bS, sS)
-    action = "WAIT"
-    entry = 0
-    sl = 0
-    tp1 = 0
-    tp2 = 0
-    tp3 = 0
-    if bS > sS and bS >= 2:
-        action = "BUY"
-        entry = cur
+    if conf < 4:
+        print("Conf " + str(conf) + " skip")
+        return
+    if bS > sS:
+        action = "LONG"
+        reasons = bull
+    else:
+        action = "SHORT"
+        reasons = bear
+    entry = cur
+    if action == "LONG":
         sl = cur - adr * 0.5
         tp1 = cur + adr * 0.5
         tp2 = cur + adr
         tp3 = cur + adr * 1.5
-    elif sS > bS and sS >= 2:
-        action = "SELL"
-        entry = cur
+    else:
         sl = cur + adr * 0.5
         tp1 = cur - adr * 0.5
         tp2 = cur - adr
         tp3 = cur - adr * 1.5
-    sl_pips = 0
-    rr = 0
-    if action != "WAIT":
-        sl_pips = abs(entry - sl) * 10
-        rr = abs(tp1 - entry) / abs(entry - sl)
-    em = "GOLD"
-    if session == "MORNING":
-        em = "MORN"
-    if session == "NY_OPEN":
-        em = "NY-OPEN"
-    if session == "NY_CLOSE":
-        em = "NY-CLOSE"
-    if action == "WAIT":
-        text = em + " No Signal " + session + "\nPrice: " + str(round(cur, 2)) + "\nBull " + str(bS) + " Bear " + str(sS)
-    else:
-        rs = bull if action == "BUY" else bear
-        text = em + " " + action + " - " + session
-        text = text + "\nEntry: " + str(round(entry, 2))
-        text = text + "\nSL: " + str(round(sl, 2)) + " (" + str(round(sl_pips)) + " pips)"
-        text = text + "\nTP1: " + str(round(tp1, 2))
-        text = text + "\nTP2: " + str(round(tp2, 2))
-        text = text + "\nTP3: " + str(round(tp3, 2))
-        text = text + "\nRR: 1:" + str(round(rr, 2))
-        text = text + "\nConf: " + str(conf)
-        text = text + "\nReasons:\n" + "\n".join(rs[:6])
-    requests.post("https://api.telegram.org/bot" + TG + "/sendMessage", data={"chat_id": CI, "text": text}, timeout=30)
-    print("Done: " + action)
+    sl_pips = abs(entry - sl) * 10
+    rr = abs(tp1 - entry) / abs(entry - sl)
+    text = "GOLD " + action
+    text = text + "\nEntry: " + str(round(entry, 2))
+    text = text + "\nSL: " + str(round(sl, 2)) + " (" + str(round(sl_pips)) + " pips)"
+    text = text + "\nTP1: " + str(round(tp1, 2))
+    text = text + "\nTP2: " + str(round(tp2, 2))
+    text = text + "\nTP3: " + str(round(tp3, 2))
+    text = text + "\nRR: 1:" + str(round(rr, 2))
+    text = text + "\nConf: " + str(conf) + "/10"
+    text = text + "\nReasons:\n" + "\n".join(reasons[:8])
+    requests.post("https://api.telegram.org/bot" + TG + "/sendMessage",
+                  data={"chat_id": CI, "text": text}, timeout=30)
+    print("Sent: " + action)
 
-if __name__ == "__main__":
-    run("MORNING")
+run()
