@@ -1,19 +1,5 @@
 {
-  "position": {
-    "side": "SHORT",
-    "entry": 4315.92577,
-    "sl": 4315.92577,
-    "tp1": 4296.24,
-    "tp2": 4286.4,
-    "tp3": 4276.56,
-    "tp_hits": [
-      1,
-      2
-    ],
-    "warn_hits": [],
-    "opened_at": "2026-09-14 16:59 UTC",
-    "trailing_sl": 4296.24
-  },
+  "position": null,
   "counter": null,
   "last_session": "NEWYORK",
   "session_open": 4298.67171,
@@ -27,7 +13,7 @@
   "last_mode": "",
   "last_sl_time": "2026-09-14 16:59 UTC",
   "daily_loss": 37.43131999999969,
-  "wins": 0,
+  "wins": 1,
   "losses": 2,
   "today_trades": 3,
   "today_date": "2026-09-14",
