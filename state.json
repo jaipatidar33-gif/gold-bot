@@ -7,13 +7,15 @@
     "tp2": 4263.85,
     "tp3": 4254.27,
     "tp_hits": [],
-    "warn_hits": [],
+    "warn_hits": [
+      1
+    ],
     "opened_at": "2026-09-14 15:47 UTC"
   },
   "counter": null,
-  "last_session": "NY_OVERLAP",
-  "session_open": 4268.03244,
-  "session_open_time": "2026-09-14 13:18 UTC",
+  "last_session": "NEWYORK",
+  "session_open": 4298.67171,
+  "session_open_time": "2026-09-14 16:20 UTC",
   "exhaust_alerted": "",
   "ny_close_alerted": "",
   "weekend_alerted": "",
