@@ -1,20 +1,28 @@
 {
-  "position": {
-    "side": "SHORT",
-    "entry": 4293.68828,
-    "sl": 4293.68828,
-    "tp1": 4273.68828,
-    "tp2": 4263.68828,
-    "tp3": 4253.68828,
-    "tp_hits": [
-      1
-    ],
-    "warn_hits": [],
-    "opened_at": "2026-09-14 11:44 UTC"
-  },
+  "position": null,
   "counter": null,
-  "last_session": "NY_OVERLAP",
-  "session_open": 4278.25789,
-  "session_open_time": "2026-09-14 12:49 UTC",
-  "exhaust_alerted": "LONDON_BULL_EXHAUST"
+  "last_session": "",
+  "session_open": null,
+  "session_open_time": "",
+  "exhaust_alerted": "",
+  "ny_close_alerted": "",
+  "weekend_alerted": "",
+  "last_normal_run": "",
+  "last_hold_msg": "",
+  "neutral_alerted": "",
+  "last_mode": "",
+  "last_sl_time": "",
+  "daily_loss": 0,
+  "wins": 0,
+  "losses": 0,
+  "today_trades": 0,
+  "today_date": "",
+  "daily_summary_sent": "",
+  "last_signal_price": 0,
+  "last_signal_dir": "",
+  "confluence_history": [],
+  "peak_equity": 1000,
+  "current_equity": 1000,
+  "active_trades": [],
+  "closed_trades": []
 }
