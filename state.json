@@ -20,7 +20,9 @@
   "daily_summary_sent": "",
   "last_signal_price": 0,
   "last_signal_dir": "",
-  "confluence_history": [],
+  "confluence_history": [
+    12
+  ],
   "peak_equity": 1000,
   "current_equity": 1000,
   "active_trades": [],
