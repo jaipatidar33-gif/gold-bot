@@ -7,10 +7,12 @@
     "tp2": 4286.4,
     "tp3": 4276.56,
     "tp_hits": [
-      1
+      1,
+      2
     ],
     "warn_hits": [],
-    "opened_at": "2026-09-14 16:59 UTC"
+    "opened_at": "2026-09-14 16:59 UTC",
+    "trailing_sl": 4296.24
   },
   "counter": null,
   "last_session": "NEWYORK",
