@@ -1,5 +1,15 @@
 {
-  "position": null,
+  "position": {
+    "side": "SHORT",
+    "entry": 4293.68828,
+    "sl": 4313.68828,
+    "tp1": 4273.68828,
+    "tp2": 4263.68828,
+    "tp3": 4253.68828,
+    "tp_hits": [],
+    "warn_hits": [],
+    "opened_at": "2026-09-14 11:44 UTC"
+  },
   "counter": null,
   "last_session": "LONDON",
   "session_open": 4291.84549,
