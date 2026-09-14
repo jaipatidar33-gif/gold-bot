@@ -18,7 +18,7 @@
   "ny_close_alerted": "",
   "weekend_alerted": "",
   "last_normal_run": "",
-  "last_hold_msg": "2026-09-14 16:59 UTC",
+  "last_hold_msg": "2026-09-14 18:16 UTC",
   "neutral_alerted": "",
   "last_mode": "",
   "last_sl_time": "2026-09-14 16:59 UTC",
@@ -31,9 +31,9 @@
   "last_signal_price": 4315.92577,
   "last_signal_dir": "SHORT",
   "confluence_history": [
-    10,
     12,
-    14
+    14,
+    13
   ],
   "peak_equity": 1000,
   "current_equity": 1000,
