@@ -48,15 +48,32 @@ def send_telegram(msg):
         print("Telegram send failed: " + str(e))
 
 
+def get_dst_flags():
+    try:
+        now_utc = pd.Timestamp.now(tz='UTC')
+        ny_dst = now_utc.tz_convert('America/New_York').dst().total_seconds() > 0
+        london_dst = now_utc.tz_convert('Europe/London').dst().total_seconds() > 0
+        return ny_dst, london_dst
+    except Exception:
+        return False, False
+
+
 def get_session():
     h = datetime.now(timezone.utc).hour
-    if h >= 22 or h < 4:
+    ny_dst, london_dst = get_dst_flags()
+    london_open = 7 if london_dst else 8
+    london_close = 16 if london_dst else 17
+    ny_open = 12 if ny_dst else 13
+    ny_close = 21 if ny_dst else 22
+    if h >= ny_close or h < 4:
         return "MORNING"
-    if 8 <= h < 12:
+    if 4 <= h < london_open:
+        return "ASIAN"
+    if london_open <= h < ny_open:
         return "LONDON"
-    if 12 <= h < 17:
+    if ny_open <= h < london_close:
         return "NY_OVERLAP"
-    if 17 <= h < 21:
+    if london_close <= h < ny_close:
         return "NY"
     return "ASIAN"
 
@@ -64,11 +81,15 @@ def get_session():
 def is_news_time():
     now = datetime.now(timezone.utc)
     h, m, dow = now.hour, now.minute, now.weekday()
-    if dow == 4 and h == 12 and 25 <= m <= 35:
+    ny_dst, london_dst = get_dst_flags()
+    nfp_h = 12 if ny_dst else 13
+    cpi_h = 12 if ny_dst else 13
+    fed_h = 18 if ny_dst else 19
+    if dow == 4 and h == nfp_h and 25 <= m <= 35:
         return "NFP"
-    if dow in [0, 1, 2, 3, 4] and h == 18 and 55 <= m <= 65:
+    if dow in [0, 1, 2, 3, 4] and h == fed_h and 55 <= m <= 65:
         return "FED"
-    if dow in [0, 1, 2, 3, 4] and h == 12 and 25 <= m <= 35:
+    if dow in [0, 1, 2, 3, 4] and h == cpi_h and 25 <= m <= 35:
         return "CPI"
     return None
 
@@ -76,11 +97,15 @@ def is_news_time():
 def is_pre_news():
     now = datetime.now(timezone.utc)
     h, m, dow = now.hour, now.minute, now.weekday()
-    if dow == 4 and h == 12 and 10 <= m <= 24:
+    ny_dst, london_dst = get_dst_flags()
+    nfp_h = 12 if ny_dst else 13
+    cpi_h = 12 if ny_dst else 13
+    fed_h = 18 if ny_dst else 19
+    if dow == 4 and h == nfp_h and 10 <= m <= 24:
         return "NFP in " + str(25 - m) + " min"
-    if dow in [0, 1, 2, 3, 4] and h == 18 and 40 <= m <= 54:
+    if dow in [0, 1, 2, 3, 4] and h == fed_h and 40 <= m <= 54:
         return "FED in " + str(55 - m) + " min"
-    if dow in [0, 1, 2, 3, 4] and h == 12 and 10 <= m <= 24:
+    if dow in [0, 1, 2, 3, 4] and h == cpi_h and 10 <= m <= 24:
         return "CPI in " + str(25 - m) + " min"
     return None
 
@@ -231,18 +256,22 @@ def check_equal_levels(levels, tol=5):
     return False
 
 
-# ===== SESSION FUNCTIONS =====
 def get_session_segment(m5, session):
     today = m5["dt"].iloc[-1].date()
+    ny_dst, london_dst = get_dst_flags()
+    london_open = 7 if london_dst else 8
+    london_close = 16 if london_dst else 17
+    ny_open = 12 if ny_dst else 13
+    ny_close = 21 if ny_dst else 22
     if session == "LONDON":
-        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= 7) & (m5["dt"].dt.hour < 12)]
+        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= london_open) & (m5["dt"].dt.hour < ny_open)]
     if session == "NY_OVERLAP":
-        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= 12) & (m5["dt"].dt.hour < 17)]
+        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= ny_open) & (m5["dt"].dt.hour < london_close)]
     if session == "NY":
-        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= 17) & (m5["dt"].dt.hour < 21)]
+        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= london_close) & (m5["dt"].dt.hour < ny_close)]
     if session == "ASIAN":
-        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= 4) & (m5["dt"].dt.hour < 8)]
-    return m5[(m5["dt"].dt.date == today) & ((m5["dt"].dt.hour >= 22) | (m5["dt"].dt.hour < 4))]
+        return m5[(m5["dt"].dt.date == today) & (m5["dt"].dt.hour >= 4) & (m5["dt"].dt.hour < london_open)]
+    return m5[(m5["dt"].dt.date == today) & ((m5["dt"].dt.hour >= ny_close) | (m5["dt"].dt.hour < 4))]
 
 
 def session_vwap(m5, session):
@@ -263,7 +292,10 @@ def session_high_low(m5, session):
 def prev_session_close(m5):
     today = m5["dt"].iloc[-1].date()
     yesterday = today - pd.Timedelta(days=1)
-    seg = m5[(m5["dt"].dt.date == yesterday) & (m5["dt"].dt.hour >= 17) & (m5["dt"].dt.hour < 21)]
+    ny_dst, london_dst = get_dst_flags()
+    london_close = 16 if london_dst else 17
+    ny_close = 21 if ny_dst else 22
+    seg = m5[(m5["dt"].dt.date == yesterday) & (m5["dt"].dt.hour >= london_close) & (m5["dt"].dt.hour < ny_close)]
     if len(seg) == 0:
         return None
     return seg["close"].iloc[-1]
@@ -352,25 +384,25 @@ def session_liquidity_map(h1, m15, cur):
     }
 
 
-# ===== SESSION EXHAUSTION =====
 def detect_session_exhaustion(m5, m15, h1, session, cur):
     seg = get_session_segment(m5, session)
     if len(seg) < 3:
         return None, 0, {}
-    
     session_high = seg["high"].max()
     session_low = seg["low"].min()
     session_range = session_high - session_low
-    
     daily_ranges = m5.groupby(m5["dt"].dt.date).agg({"high": "max", "low": "min"})
     daily_ranges["range"] = daily_ranges["high"] - daily_ranges["low"]
     adr = daily_ranges["range"].tail(14).mean()
     range_used = session_range / adr if adr > 0 else 0
-    
     rsi_val = rsi(m15["close"].tolist())
-    
-    session_starts = {"LONDON": 8, "NY_OVERLAP": 12, "NY": 17, "ASIAN": 4, "MORNING": 22}
-    session_ends = {"LONDON": 12, "NY_OVERLAP": 17, "NY": 21, "ASIAN": 8, "MORNING": 4}
+    ny_dst, london_dst = get_dst_flags()
+    london_open = 7 if london_dst else 8
+    london_close = 16 if london_dst else 17
+    ny_open = 12 if ny_dst else 13
+    ny_close = 21 if ny_dst else 22
+    session_starts = {"LONDON": london_open, "NY_OVERLAP": ny_open, "NY": london_close, "ASIAN": 4, "MORNING": ny_close}
+    session_ends = {"LONDON": ny_open, "NY_OVERLAP": london_close, "NY": ny_close, "ASIAN": london_open, "MORNING": 4}
     start_h = session_starts.get(session, 0)
     end_h = session_ends.get(session, 0)
     now_h = datetime.now(timezone.utc).hour
@@ -379,19 +411,15 @@ def detect_session_exhaustion(m5, m15, h1, session, cur):
     else:
         elapsed = 0.5
     elapsed = max(0, min(1, elapsed))
-    
     recent_ranges = (m5["high"] - m5["low"]).tail(5)
     prev_ranges = (m5["high"] - m5["low"]).tail(15).head(10)
     vol_decline = recent_ranges.mean() < prev_ranges.mean() * 0.7 if len(prev_ranges) > 0 else False
-    
     H1, L1 = swings(h1)
     swept_high = len(H1) >= 3 and any(abs(session_high - x) < 1.5 for x in H1[-3:])
     swept_low = len(L1) >= 3 and any(abs(session_low - x) < 1.5 for x in L1[-3:])
-    
     mid = (session_high + session_low) / 2
     bull_score = 0
     bear_score = 0
-    
     if range_used > 0.7:
         if cur > mid:
             bear_score += 1
@@ -415,7 +443,6 @@ def detect_session_exhaustion(m5, m15, h1, session, cur):
         bear_score += 1
     if swept_low and cur > session_low:
         bull_score += 1
-    
     info = {
         "range_used": round(range_used * 100, 1),
         "rsi": round(rsi_val, 1),
@@ -427,7 +454,6 @@ def detect_session_exhaustion(m5, m15, h1, session, cur):
         "sess_low": round(session_low, 2),
         "mid": round(mid, 2),
     }
-    
     if bear_score >= 3 and bear_score > bull_score:
         return "BEAR_EXHAUST", bear_score, info
     if bull_score >= 3 and bull_score > bear_score:
@@ -435,9 +461,7 @@ def detect_session_exhaustion(m5, m15, h1, session, cur):
     return None, 0, info
 
 
-# ===== SESSION GRACE PERIOD (NEW) =====
 def is_session_grace_period(state, session):
-    """Session open ke baad 30 min tak signal nahi de"""
     session_open_time = state.get("session_open_time", "")
     if not session_open_time:
         return False
@@ -445,16 +469,13 @@ def is_session_grace_period(state, session):
         open_dt = datetime.strptime(session_open_time, "%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
     except Exception:
         return False
-    
     now_utc = datetime.now(timezone.utc)
     mins_since_open = (now_utc - open_dt).total_seconds() / 60
-    
     if mins_since_open < 30:
         return True
     return False
 
 
-# ===== POSITION & COUNTER =====
 def check_position(state, cur):
     pos = state.get("position")
     if not pos:
@@ -467,7 +488,6 @@ def check_position(state, cur):
     warn_hits = pos.get("warn_hits", [])
     msg = None
     sl_dist = abs(sl - entry)
-
     if side == "LONG":
         adverse = entry - cur
         if cur <= sl:
@@ -518,7 +538,6 @@ def check_position(state, cur):
             tp_hits.append(3)
             state["position"] = None
             return state, "TP3 HIT - SHORT +40 pips. Position closed."
-
     pos["tp_hits"] = tp_hits
     pos["warn_hits"] = warn_hits
     state["position"] = pos
@@ -568,7 +587,6 @@ def detect_counter_signal(pos_side, h1, m15, m5, cur, session):
     div = rsi_divergence(m15)
     psc = prev_session_close(m5)
     vol = volume_spike(m5)
-    
     if pos_side == "SHORT":
         c = 0
         if ch2 == "BULL": c += 1
@@ -581,7 +599,6 @@ def detect_counter_signal(pos_side, h1, m15, m5, cur, session):
         if vol: c += 1
         if c >= 5:
             return "LONG", c
-    
     if pos_side == "LONG":
         c = 0
         if ch2 == "BEAR": c += 1
@@ -597,7 +614,6 @@ def detect_counter_signal(pos_side, h1, m15, m5, cur, session):
     return None, 0
 
 
-# ===== MAIN =====
 def run():
     state = load_state()
     session = get_session()
@@ -630,7 +646,6 @@ def run():
     if live_price:
         cur = live_price
 
-    # 1) POSITION CHECKS
     state, pos_msg = check_position(state, cur)
     if pos_msg:
         send_telegram(pos_msg)
@@ -638,21 +653,19 @@ def run():
     if ctr_msg:
         send_telegram(ctr_msg)
 
-    # 2) SESSION CHANGE + OPEN CAPTURE
     old_session = state.get("last_session", "")
     session_changed = is_session_transition(old_session, session)
-    
+
     if session_changed or not state.get("session_open"):
         state["session_open"] = cur
         state["session_open_time"] = now_utc.strftime("%Y-%m-%d %H:%M UTC")
-    
+
     state["last_session"] = session
     save_state(state)
-    
+
     if session_changed:
         send_telegram("SESSION CHANGE: " + old_session + " -> " + session)
 
-    # 3) 35 INDICATORS
     bull, bear = [], []
     d_hi, d_lo = daily["high"].max(), daily["low"].min()
     d_rng = d_hi - d_lo
@@ -792,7 +805,6 @@ def run():
     if c2["close"] < c2["open"] and c3["close"] > c3["open"] and c3["close"] > c2["open"]: bull.append("1H Bull Engulf")
     if c2["close"] > c2["open"] and c3["close"] < c3["open"] and c3["close"] < c2["open"]: bear.append("1H Bear Engulf")
 
-    # 4) MOMENTUM + PA
     mom_dir, mom_speed = check_momentum(m5)
     if mom_dir == "FAST_BULL": bull.append("Fast Bull")
     if mom_dir == "FAST_BEAR": bear.append("Fast Bear")
@@ -804,12 +816,10 @@ def run():
         if "Bull" in s: bull.append(s)
         elif "Bear" in s: bear.append(s)
 
-    # 5) LIQUIDITY MAP
     liq = session_liquidity_map(h1, m15, cur)
 
-    # 6) SESSION EXHAUSTION
     exhaust_type, exhaust_score, exhaust_info = detect_session_exhaustion(m5, m15, h1, session, cur)
-    
+
     if exhaust_type and exhaust_score >= 3:
         last_alerted = state.get("exhaust_alerted", "")
         alert_key = session + "_" + exhaust_type
@@ -824,7 +834,6 @@ def run():
             alert += "Volume: " + ("Declining" if exhaust_info["vol_decline"] else "Normal") + "\n"
             alert += "Session H: " + str(exhaust_info["sess_high"]) + "\n"
             alert += "Session L: " + str(exhaust_info["sess_low"]) + "\n"
-            
             if exhaust_type == "BEAR_EXHAUST":
                 alert += "\nSignal: BEAR EXHAUST (" + str(exhaust_score) + "/5)"
                 alert += "\nMeaning: Buying puri ho gayi"
@@ -835,11 +844,9 @@ def run():
                 alert += "\nMeaning: Selling puri ho gayi"
                 alert += "\nExpect: Buying aayegi"
                 alert += "\nWatch: Break above " + str(exhaust_info["mid"])
-            
             send_telegram(alert)
             print("Exhaustion: " + exhaust_type)
 
-    # 7) HEDGE LOGIC
     existing = state.get("position")
     counter = state.get("counter")
 
@@ -874,13 +881,10 @@ def run():
             send_telegram(msg)
             return
 
-    # 8) SESSION GRACE PERIOD — pehle 30 min signal nahi
     if is_session_grace_period(state, session):
-        mins = 30
-        print("Session grace period active - no new signal yet")
+        print("Session grace period - no new signal yet")
         return
 
-    # 9) NORMAL SIGNAL
     bS, sS = len(bull), len(bear)
     conf = max(bS, sS)
 
