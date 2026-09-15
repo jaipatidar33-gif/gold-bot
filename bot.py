@@ -10,29 +10,33 @@ GH_REPO = os.environ.get("GITHUB_REPOSITORY")
 STATE_FILE = "state.json"
 
 
+# ==================== STATE ====================
 def load_state():
     try:
         with open(STATE_FILE, "r") as f: return json.load(f)
     except:
         return {"position":None,"last_session":"","session_open_time":"","session_high":None,"session_low":None,
-                "session_h":{},"session_l":{},"prev_h":{},"prev_l":{},"session_open_price":{},"session_range":{},
-                "exhaust_alerted":"","last_hold_msg":"","last_signal_price":0,"last_signal_time":"","flip_count":0,
-                "last_sl_time":"","daily_loss":0,"wins":0,"losses":0,"today_date":"","session_alerted":"",
-                "open_alerted":"","close_alerted":"","sweep_done":"","neutral_alerted":"","last_1m_check":"",
-                "last_big_candle":"","cache":{},"loss_streak":0}
+                "session_h":{},"session_l":{},"prev_h":{},"prev_l":{},"session_open_price":{},
+                "exhaust_alerted":"","last_hold_msg":"","last_signal_price":0,"last_signal_time":"",
+                "flip_count":0,"last_sl_time":"","daily_loss":0,"wins":0,"losses":0,"today_date":"",
+                "session_alerted":"","close_alerted":"","neutral_alerted":"","last_neutral_msg":"",
+                "last_1m_check":"","last_big_candle":"","cache":{},"loss_streak":0,
+                "killzone_alerted":"","sweep_done":"","last_high":0,"last_low":0}
 
 
 def save_state(s):
     try:
-        with open(STATE_FILE,"w") as f: json.dump(s,f,indent=2,default=str)
-    except Exception as e: print("State fail:"+str(e))
+        clean={k:v for k,v in s.items() if k!="cache"}
+        with open(STATE_FILE,"w") as f: json.dump(clean,f,indent=2,default=str)
+    except Exception as e: print("State write fail:"+str(e))
     if not GH_TOKEN or not GH_REPO: return
     api="https://api.github.com/repos/"+GH_REPO+"/contents/"+STATE_FILE
     h={"Authorization":"token "+GH_TOKEN}
     try:
         r=requests.get(api,headers=h)
         sha=r.json().get("sha") if r.status_code==200 else None
-        c=base64.b64encode(json.dumps(s,indent=2,default=str).encode()).decode()
+        clean={k:v for k,v in s.items() if k!="cache"}
+        c=base64.b64encode(json.dumps(clean,indent=2,default=str).encode()).decode()
         d={"message":"state update","content":c}
         if sha: d["sha"]=sha
         requests.put(api,headers=h,json=d,timeout=30)
@@ -46,6 +50,7 @@ def send(m):
     except Exception as e: print("TG fail:"+str(e))
 
 
+# ==================== TIME / IST ====================
 def to_ist(d): return d+timedelta(hours=5,minutes=30)
 
 def fmt_t(d):
@@ -55,12 +60,15 @@ def fmt_t(d):
 def fmt_d(d): return to_ist(d).strftime("%d-%m-%Y")
 
 
+# ==================== DST (Summer/Winter) ====================
 def get_dst():
     try:
         n=pd.Timestamp.now(tz='UTC')
-        return (n.tz_convert('America/New_York').dst().total_seconds()>0,
-                n.tz_convert('Europe/London').dst().total_seconds()>0)
-    except: return False,False
+        ny=n.tz_convert('America/New_York').dst().total_seconds()>0
+        ld=n.tz_convert('Europe/London').dst().total_seconds()>0
+        sd=n.tz_convert('Australia/Sydney').dst().total_seconds()>0
+        return ny,ld,sd
+    except: return False,False,False
 
 def is_weekend(): return datetime.now(timezone.utc).weekday() in [5,6]
 
@@ -73,9 +81,10 @@ def is_holiday():
 def is_market_open(): return not (is_weekend() or is_holiday())
 
 
+# ==================== SESSIONS ====================
 def get_session():
     h=datetime.now(timezone.utc).hour
-    ny,ld=get_dst()
+    ny,ld,sd=get_dst()
     lo=7 if ld else 8; lc=16 if ld else 17; no=12 if ny else 13; nc=21 if ny else 22
     if nc<=h or h<3: return "SYDNEY"
     if 3<=h<9: return "TOKYO"
@@ -84,11 +93,11 @@ def get_session():
     if lc<=h<nc: return "NEWYORK"
     return "SYDNEY"
 
-def is_active(s): return s in ["TOKYO","LONDON","NY_OVERLAP","NEWYORK"]
+def is_active(s): return s in ["TOKYO","LONDON","NY_OVERLAP","NEWYORK","SYDNEY"]
 
 def get_seg(df,s):
     t=df["dt"].iloc[-1].date()
-    ny,ld=get_dst()
+    ny,ld,sd=get_dst()
     lo=7 if ld else 8; lc=16 if ld else 17; no=12 if ny else 13; nc=21 if ny else 22
     if s=="SYDNEY": return df[(df["dt"].dt.date==t)&((df["dt"].dt.hour>=nc)|(df["dt"].dt.hour<3))]
     if s=="TOKYO": return df[(df["dt"].dt.date==t)&(df["dt"].dt.hour>=3)&(df["dt"].dt.hour<9)]
@@ -102,11 +111,11 @@ def get_prev_sess(s):
     i=o.index(s) if s in o else 0
     return o[(i-1)%len(o)]
 
-def is_session_transition(old_s, new_s):
-    return bool(old_s) and old_s != new_s
+def is_session_transition(old_s,new_s):
+    return bool(old_s) and old_s!=new_s
 
 def is_ny_close():
-    n=datetime.now(timezone.utc); ny,_=get_dst(); nh=21 if ny else 22
+    n=datetime.now(timezone.utc); ny,_,_=get_dst(); nh=21 if ny else 22
     return n.hour==nh and n.minute<10
 
 def is_fri_close():
@@ -114,20 +123,28 @@ def is_fri_close():
     return n.weekday()==4 and n.hour==20 and n.minute<10
 
 def get_kz():
-    h=datetime.now(timezone.utc).hour; ny,ld=get_dst()
+    h=datetime.now(timezone.utc).hour; ny,ld,_=get_dst()
     lo=7 if ld else 8; no=12 if ny else 13
     if lo<=h<lo+1: return "London KZ"
     if no<=h<no+1: return "NY KZ"
+    lc=16 if ld else 17
+    if lc-1<=h<lc: return "London Close KZ"
     return None
 
 def is_silver_bullet():
-    ny,_=get_dst(); sb=14 if ny else 15
+    ny,_,_=get_dst(); sb=14 if ny else 15
     return datetime.now(timezone.utc).hour==sb
 
+def is_lunch_block():
+    h=datetime.now(timezone.utc).hour; ny,ld,_=get_dst()
+    lo=7 if ld else 8; no=12 if ny else 13
+    return lo+3<=h<no-1
 
+
+# ==================== NEWS ====================
 def is_news():
     n=datetime.now(timezone.utc); h,m,dow=n.hour,n.minute,n.weekday()
-    ny,_=get_dst(); nh=12 if ny else 13; fh=18 if ny else 19
+    ny,_,_=get_dst(); nh=12 if ny else 13; fh=18 if ny else 19
     if dow==4 and h==nh and 25<=m<=40: return "NFP"
     if dow in [0,1,2,3,4] and h==fh and 55<=m<=65: return "FED"
     if dow in [0,1,2,3,4] and h==nh and 25<=m<=40: return "CPI"
@@ -135,7 +152,7 @@ def is_news():
 
 def is_pre_news():
     n=datetime.now(timezone.utc); h,m,dow=n.hour,n.minute,n.weekday()
-    ny,_=get_dst(); nh=12 if ny else 13; fh=18 if ny else 19
+    ny,_,_=get_dst(); nh=12 if ny else 13; fh=18 if ny else 19
     if dow==4 and h==nh and 10<=m<=24: return "NFP in "+str(25-m)+" min"
     if dow in [0,1,2,3,4] and h==fh and 40<=m<=54: return "FED in "+str(55-m)+" min"
     if dow in [0,1,2,3,4] and h==nh and 10<=m<=24: return "CPI in "+str(25-m)+" min"
@@ -149,6 +166,7 @@ def news_day():
     return w
 
 
+# ==================== DATA FETCH ====================
 def fetch(i,s):
     u="https://api.twelvedata.com/time_series"
     p={"symbol":"XAU/USD","interval":i,"outputsize":s,"apikey":DK}
@@ -172,6 +190,7 @@ def fetch_live():
     return None
 
 
+# ==================== INDICATORS ====================
 def ema(a,p):
     k=2.0/(p+1); e=a[0]
     for x in a[1:]: e=x*k+e*(1-k)
@@ -288,6 +307,8 @@ def vol_spike(m5):
     if a==0: return False
     return (m5["high"].iloc[-1]-m5["low"].iloc[-1])>a*1.3
 
+
+# ==================== LIQUIDITY ====================
 def sess_hl(df,s):
     seg=get_seg(df,s)
     if len(seg)==0: return None,None
@@ -317,7 +338,7 @@ def liq_sweep(m5,side):
     if side=="SHORT" and c2["high"]>rh+3 and c1["close"]<rh: return True
     return False
 
-def liq_magnet(h1,m15,cur):
+def liq_magnet(h1,cur):
     H,L=swings(h1)
     b=sorted([x for x in H if x>cur])[:5]
     s=sorted([x for x in L if x<cur],reverse=True)[:5]
@@ -325,11 +346,25 @@ def liq_magnet(h1,m15,cur):
             "mB":round(b[1],2) if len(b)>1 else None,"mS":round(s[1],2) if len(s)>1 else None,
             "fB":round(b[-1],2) if len(b)>1 else None,"fS":round(s[-1],2) if len(s)>1 else None}
 
+def pdh_pdl(d):
+    if len(d)<2: return None,None
+    return round(d["high"].iloc[-2],2),round(d["low"].iloc[-2],2)
+
 def pwh_pwl(d):
     if len(d)<14: return None,None
     lw=d.iloc[-14:-7]
     if len(lw)==0: return None,None
     return round(lw["high"].max(),2),round(lw["low"].min(),2)
+
+def pmh_pml(d):
+    if len(d)<60: return None,None
+    lm=d.iloc[-60:-30]
+    if len(lm)==0: return None,None
+    return round(lm["high"].max(),2),round(lm["low"].min(),2)
+
+def rnd_num(p):
+    r=round(p/50)*50
+    return r if abs(p-r)<5 else None
 
 def ch_1m(m1):
     if m1 is None or len(m1)<5: return None
@@ -353,6 +388,7 @@ def cnt_1m(m1,dir):
     return c
 
 
+# ==================== POSITION MGMT ====================
 def hold_break(state,h1,m15,m5,cur):
     p=state.get("position")
     if not p: return False,"",""
@@ -476,13 +512,14 @@ def cooldown(state,now):
     except: return False
 
 
+# ==================== MAIN ====================
 def run():
     state=load_state()
     session=get_session()
     now_utc=datetime.now(timezone.utc)
     now_str=now_utc.strftime("%Y-%m-%d %H:%M UTC")
 
-    print("RUN: " + now_str + " | Session: " + session)
+    print("RUN: "+now_str+" | Session: "+session)
 
     if not is_market_open(): print("Market closed"); return
     if cooldown(state,now_utc): print("Cooldown"); return
@@ -496,7 +533,7 @@ def run():
         k=now_utc.strftime("%Y-%m-%d")
         if state.get("close_alerted","")!=k:
             state["close_alerted"]=k; save_state(state)
-            send("🔔 FRIDAY CLOSE\nWeekend aa raha hai\nPositions manage karo")
+            send("🔔 FRIDAY CLOSE\nWeekend aa raha hai")
 
     if is_ny_close():
         k=now_utc.strftime("%Y-%m-%d")
@@ -511,7 +548,7 @@ def run():
 
     cache=state.get("cache",{})
     now_ts=int(time.time())
-    tfs=[("m5","5min",200,300),("m15","15min",200,600),("h1","1h",250,1800),("h4","4h",200,3600),("daily","1day",200,7200)]
+    tfs=[("m5","5min",200,300),("m15","15min",200,600),("h1","1h",250,3600),("h4","4h",200,7200),("daily","1day",200,14400)]
     data={}
     for n,i,s,ttl in tfs:
         c=cache.get(n,{})
@@ -539,7 +576,7 @@ def run():
     live=fetch_live()
     if live: cur=live
 
-    print("Live: " + str(round(cur,2)) + " | Session: " + session)
+    print("Live: "+str(round(cur,2))+" | Session: "+session)
 
     state,msg=chk_pos(state,cur,now_str)
     if msg: send(msg)
@@ -569,7 +606,8 @@ def run():
             st="BUY" if p["side"]=="LONG" else "SELL"
             if act=="EXIT_AND_REVERSE":
                 rt="SELL" if p["side"]=="LONG" else "BUY"
-                m="🚨 "+st+" TUT GAYA - REVERSE!\n\n"+reason+"\n\n1. CLOSE "+st+"\n2. Take "+rt+" @ "+str(round(cur,2))
+                m="🚨 "+st+" TUT GAYA - REVERSE!\n\n"+reason
+                m+="\n\n1. CLOSE "+st+"\n2. Take "+rt+" @ "+str(round(cur,2))
                 send(m)
             elif act=="EXIT_NOW": send("⚠️ "+st+" WEAK - EXIT\n\n"+reason)
             elif act=="WARNING": send("⚠️ "+st+" WARNING\n\n"+reason)
@@ -607,8 +645,6 @@ def run():
         send(m)
 
     if p:
-        adr=calc_adr(daily)
-        pips=pip_cycle(session,adr)
         pnl=(cur-p["entry"]) if p["side"]=="LONG" else (p["entry"]-cur)
         lh=state.get("last_hold_msg","")
         do_hold=True
@@ -621,9 +657,21 @@ def run():
             state["last_hold_msg"]=now_str; save_state(state)
             st="BUY" if p["side"]=="LONG" else "SELL"
             pnl_txt=("+" if pnl>=0 else "")+str(round(pnl,1))
+            c15h=ch_choch(m15); c1hh=ch_choch(h1)
+            score_chk=0
+            if p["side"]=="LONG":
+                if c15h=="BEAR": score_chk+=1
+                if c1hh=="BEAR": score_chk+=1
+            if p["side"]=="SHORT":
+                if c15h=="BULL": score_chk+=1
+                if c1hh=="BULL": score_chk+=1
+            if score_chk>=2: dec="🚨 CLOSE karo\nReason: CHoCH against"
+            elif score_chk==1: dec="⚠️ WATCH\n1 CHoCH against"
+            else: dec="✅ HOLD karo\nTrend intact"
             m="⏸️ HOLD "+st+"\n\nEntry: "+str(round(p["entry"],2))+"\n"
             m+="Current: "+str(round(cur,2))+"\nP&L: "+pnl_txt+" pips\n"
             m+="SL: "+str(round(p["sl"],2))+"\nTP1: "+str(round(p["tp1"],2))
+            m+="\n\nDecision: "+dec
             m+="\n\nTime: "+fmt_t(now_utc)+"\nSession: "+session
             send(m)
 
@@ -671,15 +719,13 @@ def run():
     if pwh and abs(cur-pwh)<5: bear.append("Near PWH")
     if pwl and abs(cur-pwl)<5: bull.append("Near PWL")
 
-    liq=liq_magnet(h1,m15,cur)
+    liq=liq_magnet(h1,cur)
 
     existing=state.get("position")
-    if is_active(session) or session=="SYDNEY":
+    if is_active(session):
         bS,sS=len(bull),len(bear)
         conf=max(bS,sS)
-        
-        print("CHECK: Bull=" + str(bS) + " Bear=" + str(sS) + " Conf=" + str(conf))
-        
+        print("CHECK: Bull="+str(bS)+" Bear="+str(sS)+" Conf="+str(conf))
         if conf<8:
             if bS==sS:
                 k=now_utc.strftime("%Y-%m-%d")+"_"+session
