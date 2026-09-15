@@ -482,6 +482,8 @@ def run():
     now_utc=datetime.now(timezone.utc)
     now_str=now_utc.strftime("%Y-%m-%d %H:%M UTC")
 
+    print("RUN: " + now_str + " | Session: " + session)
+
     if not is_market_open(): print("Market closed"); return
     if cooldown(state,now_utc): print("Cooldown"); return
     if state.get("daily_loss",0)>=60: print("Daily loss limit"); return
@@ -536,6 +538,8 @@ def run():
     cur=m5["close"].iloc[-1]
     live=fetch_live()
     if live: cur=live
+
+    print("Live: " + str(round(cur,2)) + " | Session: " + session)
 
     state,msg=chk_pos(state,cur,now_str)
     if msg: send(msg)
@@ -673,6 +677,9 @@ def run():
     if is_active(session) or session=="SYDNEY":
         bS,sS=len(bull),len(bear)
         conf=max(bS,sS)
+        
+        print("CHECK: Bull=" + str(bS) + " Bear=" + str(sS) + " Conf=" + str(conf))
+        
         if conf<8:
             if bS==sS:
                 k=now_utc.strftime("%Y-%m-%d")+"_"+session
