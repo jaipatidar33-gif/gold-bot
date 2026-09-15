@@ -17,7 +17,7 @@
   "last_session": "SYDNEY",
   "session_open": 4298.8565,
   "session_open_time": "2026-09-14 21:18 UTC",
-  "exhaust_alerted": "",
+  "exhaust_alerted": "SYDNEY_BEAR_EXHAUST",
   "ny_close_alerted": "",
   "weekend_alerted": "",
   "last_normal_run": "2026-09-15 02:45 UTC",
