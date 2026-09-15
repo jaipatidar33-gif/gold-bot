@@ -1,14 +1,16 @@
 {
   "position": null,
-  "last_session": "",
-  "session_open_time": "",
-  "session_high": null,
-  "session_low": null,
+  "last_session": "TOKYO",
+  "session_open_time": "2026-09-15 07:08 UTC",
+  "session_high": 4290.92469,
+  "session_low": 4290.92469,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
   "prev_l": {},
-  "session_open_price": {},
+  "session_open_price": {
+    "TOKYO": 4290.92469
+  },
   "exhaust_alerted": "",
   "last_hold_msg": "",
   "last_signal_price": 0,
