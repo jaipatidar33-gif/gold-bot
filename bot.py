@@ -102,6 +102,9 @@ def get_prev_sess(s):
     i=o.index(s) if s in o else 0
     return o[(i-1)%len(o)]
 
+def is_session_transition(old_s, new_s):
+    return bool(old_s) and old_s != new_s
+
 def is_ny_close():
     n=datetime.now(timezone.utc); ny,_=get_dst(); nh=21 if ny else 22
     return n.hour==nh and n.minute<10
@@ -229,13 +232,6 @@ def ch_choch(df):
     if H[-1]<H[-2] and L[-1]<L[-2]: return "BEAR"
     return None
 
-def ch_bos(df):
-    H,L=swings(df)
-    if len(H)<2 or len(L)<2: return None
-    if H[-1]>H[-2]: return "BOS_BULL"
-    if L[-1]<L[-2]: return "BOS_BEAR"
-    return None
-
 def ch_disp(df,av):
     if len(df)<3 or av==0: return None
     c=df.iloc[-1]; b=abs(c["close"]-c["open"])
@@ -292,11 +288,6 @@ def vol_spike(m5):
     if a==0: return False
     return (m5["high"].iloc[-1]-m5["low"].iloc[-1])>a*1.3
 
-def sess_vwap(df,s):
-    seg=get_seg(df,s)
-    if len(seg)==0: return None
-    return ((seg["high"]+seg["low"]+seg["close"])/3).mean()
-
 def sess_hl(df,s):
     seg=get_seg(df,s)
     if len(seg)==0: return None,None
@@ -334,19 +325,11 @@ def liq_magnet(h1,m15,cur):
             "mB":round(b[1],2) if len(b)>1 else None,"mS":round(s[1],2) if len(s)>1 else None,
             "fB":round(b[-1],2) if len(b)>1 else None,"fS":round(s[-1],2) if len(s)>1 else None}
 
-def pdh_pdl(d):
-    if len(d)<2: return None,None
-    return round(d["high"].iloc[-2],2),round(d["low"].iloc[-2],2)
-
 def pwh_pwl(d):
     if len(d)<14: return None,None
     lw=d.iloc[-14:-7]
     if len(lw)==0: return None,None
     return round(lw["high"].max(),2),round(lw["low"].min(),2)
-
-def rnd_num(p):
-    r=round(p/50)*50
-    return r if abs(p-r)<5 else None
 
 def ch_1m(m1):
     if m1 is None or len(m1)<5: return None
@@ -664,8 +647,8 @@ def run():
     if bo and bo["bot"]-5<=cur<=bo["top"]+5: bull.append("At Bull OB")
     if so and so["bot"]-5<=cur<=so["top"]+5: bear.append("At Bear OB")
     H1,L1=swings(h1)
-    if check_equal_levels(L1): bull.append("Equal Lows")
-    if check_equal_levels(H1): bear.append("Equal Highs")
+    if ch_eq(L1): bull.append("Equal Lows")
+    if ch_eq(H1): bear.append("Equal Highs")
     rv=rsi(h1["close"].tolist())
     if rv<30: bull.append("RSI Oversold")
     if rv>70: bear.append("RSI Overbought")
@@ -688,7 +671,6 @@ def run():
 
     existing=state.get("position")
     if is_active(session) or session=="SYDNEY":
-        last=state.get("last_1m_check","")
         bS,sS=len(bull),len(bear)
         conf=max(bS,sS)
         if conf<8:
