@@ -19,7 +19,7 @@ def load_state():
                 "exhaust_alerted":"","last_hold_msg":"","last_signal_price":0,"last_signal_time":"",
                 "flip_count":0,"last_sl_time":"","daily_loss":0,"wins":0,"losses":0,"today_date":"",
                 "session_alerted":"","close_alerted":"","neutral_alerted":"","last_neutral_msg":"",
-                "last_1m_check":"","last_big_candle":"","loss_streak":0,
+                "last_neutral_bias":"","last_1m_check":"","last_big_candle":"","loss_streak":0,
                 "killzone_alerted":"","sweep_done":"","last_high":0,"last_low":0}
 
 
@@ -333,25 +333,11 @@ def liq_magnet(h1,cur):
             "mB":round(b[1],2) if len(b)>1 else None,"mS":round(s[1],2) if len(s)>1 else None,
             "fB":round(b[-1],2) if len(b)>1 else None,"fS":round(s[-1],2) if len(s)>1 else None}
 
-def pdh_pdl(d):
-    if len(d)<2: return None,None
-    return round(d["high"].iloc[-2],2),round(d["low"].iloc[-2],2)
-
 def pwh_pwl(d):
     if len(d)<14: return None,None
     lw=d.iloc[-14:-7]
     if len(lw)==0: return None,None
     return round(lw["high"].max(),2),round(lw["low"].min(),2)
-
-def pmh_pml(d):
-    if len(d)<60: return None,None
-    lm=d.iloc[-60:-30]
-    if len(lm)==0: return None,None
-    return round(lm["high"].max(),2),round(lm["low"].min(),2)
-
-def rnd_num(p):
-    r=round(p/50)*50
-    return r if abs(p-r)<5 else None
 
 def ch_1m(m1):
     if m1 is None or len(m1)<5: return None
@@ -716,7 +702,7 @@ def run():
         if nl:
             try:
                 nd2=datetime.strptime(nl,"%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
-                if (now_utc-nd2).total_seconds()/60<30: do_status=False
+                if (now_utc-nd2).total_seconds()/60<25: do_status=False
             except: pass
         if do_status:
             state["last_neutral_msg"]=now_str; save_state(state)
@@ -724,6 +710,11 @@ def run():
             elif sS>bS: bias="🔴 Bearish Bias"
             else: bias="⚪ Pure Neutral"
             liq=liq_magnet(h1,cur)
+            last_bias=state.get("last_neutral_bias","")
+            chg_note=""
+            if last_bias and last_bias!=bias:
+                chg_note="\n🔔 BIAS CHANGED: "+last_bias+" → "+bias
+            state["last_neutral_bias"]=bias
             t="📊 MARKET STATUS\n\n"
             t+="Session: "+session+"\n"
             t+="Bull: "+str(bS)+" | Bear: "+str(sS)+"\n"
@@ -731,6 +722,7 @@ def run():
             t+="Conf: "+str(conf)+"/35\n"
             if liq["nB"]: t+="\n↑ BSL: "+str(liq["nB"])
             if liq["nS"]: t+="\n↓ SSL: "+str(liq["nS"])
+            t+=chg_note
             t+="\n\nDecision: ⏸️ WAIT"
             t+="\nSignal jab Conf≥8"
             t+="\n\nTime: "+fmt_t(now_utc)
