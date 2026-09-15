@@ -10,7 +10,6 @@ GH_REPO = os.environ.get("GITHUB_REPOSITORY")
 STATE_FILE = "state.json"
 
 
-# ==================== STATE ====================
 def load_state():
     try:
         with open(STATE_FILE, "r") as f: return json.load(f)
@@ -20,7 +19,7 @@ def load_state():
                 "exhaust_alerted":"","last_hold_msg":"","last_signal_price":0,"last_signal_time":"",
                 "flip_count":0,"last_sl_time":"","daily_loss":0,"wins":0,"losses":0,"today_date":"",
                 "session_alerted":"","close_alerted":"","neutral_alerted":"","last_neutral_msg":"",
-                "last_1m_check":"","last_big_candle":"","cache":{},"loss_streak":0,
+                "last_1m_check":"","last_big_candle":"","loss_streak":0,
                 "killzone_alerted":"","sweep_done":"","last_high":0,"last_low":0}
 
 
@@ -50,7 +49,6 @@ def send(m):
     except Exception as e: print("TG fail:"+str(e))
 
 
-# ==================== TIME / IST ====================
 def to_ist(d): return d+timedelta(hours=5,minutes=30)
 
 def fmt_t(d):
@@ -60,7 +58,6 @@ def fmt_t(d):
 def fmt_d(d): return to_ist(d).strftime("%d-%m-%Y")
 
 
-# ==================== DST (Summer/Winter) ====================
 def get_dst():
     try:
         n=pd.Timestamp.now(tz='UTC')
@@ -81,7 +78,6 @@ def is_holiday():
 def is_market_open(): return not (is_weekend() or is_holiday())
 
 
-# ==================== SESSIONS ====================
 def get_session():
     h=datetime.now(timezone.utc).hour
     ny,ld,sd=get_dst()
@@ -135,13 +131,7 @@ def is_silver_bullet():
     ny,_,_=get_dst(); sb=14 if ny else 15
     return datetime.now(timezone.utc).hour==sb
 
-def is_lunch_block():
-    h=datetime.now(timezone.utc).hour; ny,ld,_=get_dst()
-    lo=7 if ld else 8; no=12 if ny else 13
-    return lo+3<=h<no-1
 
-
-# ==================== NEWS ====================
 def is_news():
     n=datetime.now(timezone.utc); h,m,dow=n.hour,n.minute,n.weekday()
     ny,_,_=get_dst(); nh=12 if ny else 13; fh=18 if ny else 19
@@ -166,7 +156,6 @@ def news_day():
     return w
 
 
-# ==================== DATA FETCH ====================
 def fetch(i,s):
     u="https://api.twelvedata.com/time_series"
     p={"symbol":"XAU/USD","interval":i,"outputsize":s,"apikey":DK}
@@ -190,7 +179,6 @@ def fetch_live():
     return None
 
 
-# ==================== INDICATORS ====================
 def ema(a,p):
     k=2.0/(p+1); e=a[0]
     for x in a[1:]: e=x*k+e*(1-k)
@@ -308,7 +296,6 @@ def vol_spike(m5):
     return (m5["high"].iloc[-1]-m5["low"].iloc[-1])>a*1.3
 
 
-# ==================== LIQUIDITY ====================
 def sess_hl(df,s):
     seg=get_seg(df,s)
     if len(seg)==0: return None,None
@@ -388,7 +375,6 @@ def cnt_1m(m1,dir):
     return c
 
 
-# ==================== POSITION MGMT ====================
 def hold_break(state,h1,m15,m5,cur):
     p=state.get("position")
     if not p: return False,"",""
@@ -512,7 +498,6 @@ def cooldown(state,now):
     except: return False
 
 
-# ==================== MAIN ====================
 def run():
     state=load_state()
     session=get_session()
@@ -582,6 +567,7 @@ def run():
     if msg: send(msg)
 
     p=state.get("position")
+
     if p:
         m1=fetch("1min",50)
         if m1 is not None:
@@ -674,6 +660,7 @@ def run():
             m+="\n\nDecision: "+dec
             m+="\n\nTime: "+fmt_t(now_utc)+"\nSession: "+session
             send(m)
+        return
 
     bull,bear=[],[]
     d_hi,d_lo=daily["high"].max(),daily["low"].min()
@@ -719,51 +706,67 @@ def run():
     if pwh and abs(cur-pwh)<5: bear.append("Near PWH")
     if pwl and abs(cur-pwl)<5: bull.append("Near PWL")
 
+    bS,sS=len(bull),len(bear)
+    conf=max(bS,sS)
+    print("CHECK: Bull="+str(bS)+" Bear="+str(sS)+" Conf="+str(conf))
+
+    if conf<8:
+        nl=state.get("last_neutral_msg","")
+        do_status=True
+        if nl:
+            try:
+                nd2=datetime.strptime(nl,"%Y-%m-%d %H:%M UTC").replace(tzinfo=timezone.utc)
+                if (now_utc-nd2).total_seconds()/60<30: do_status=False
+            except: pass
+        if do_status:
+            state["last_neutral_msg"]=now_str; save_state(state)
+            if bS>sS: bias="🟢 Bullish Bias"
+            elif sS>bS: bias="🔴 Bearish Bias"
+            else: bias="⚪ Pure Neutral"
+            liq=liq_magnet(h1,cur)
+            t="📊 MARKET STATUS\n\n"
+            t+="Session: "+session+"\n"
+            t+="Bull: "+str(bS)+" | Bear: "+str(sS)+"\n"
+            t+="Bias: "+bias+"\n"
+            t+="Conf: "+str(conf)+"/35\n"
+            if liq["nB"]: t+="\n↑ BSL: "+str(liq["nB"])
+            if liq["nS"]: t+="\n↓ SSL: "+str(liq["nS"])
+            t+="\n\nDecision: ⏸️ WAIT"
+            t+="\nSignal jab Conf≥8"
+            t+="\n\nTime: "+fmt_t(now_utc)
+            send(t)
+        return
+
+    action="LONG" if bS>sS else "SHORT"
+    lh_aligned=((h1["close"].iloc[-1]>h1["close"].iloc[-2]) == (action=="LONG"))
+    if not lh_aligned: print("HTF not aligned"); return
+    lp=state.get("last_signal_price",0)
+    if lp and abs(cur-lp)>15: print("Late signal drift"); return
+    if state.get("position"): return
+
+    entry=cur
+    av2=atr(h1); av2=max(av2,15)
+    if action=="LONG": sl,tp1,tp2,tp3=cur-av2,cur+av2,cur+av2*1.5,cur+av2*2
+    else: sl,tp1,tp2,tp3=cur+av2,cur-av2,cur-av2*1.5,cur-av2*2
+    state["position"]={"side":action,"entry":entry,"sl":round(sl,2),"tp1":round(tp1,2),
+                       "tp2":round(tp2,2),"tp3":round(tp3,2),"tp_hits":[],"warn_hits":[],"opened_at":now_str}
+    state["last_signal_price"]=cur; state["last_signal_time"]=now_str
+    save_state(state)
+
+    kz=get_kz()
     liq=liq_magnet(h1,cur)
-
-    existing=state.get("position")
-    if is_active(session):
-        bS,sS=len(bull),len(bear)
-        conf=max(bS,sS)
-        print("CHECK: Bull="+str(bS)+" Bear="+str(sS)+" Conf="+str(conf))
-        if conf<8:
-            if bS==sS:
-                k=now_utc.strftime("%Y-%m-%d")+"_"+session
-                if state.get("neutral_alerted","")!=k:
-                    state["neutral_alerted"]=k; save_state(state)
-                    t="⚪ NEUTRAL\n\nBull: "+str(bS)+" | Bear: "+str(sS)+"\n"
-                    if liq["nB"]: t+="↑ "+str(liq["nB"])+" = BUY\n"
-                    if liq["nS"]: t+="↓ "+str(liq["nS"])+" = SELL"
-                    send(t)
-            return
-
-        action="LONG" if bS>sS else "SHORT"
-        lh_aligned=((h1["close"].iloc[-1]>h1["close"].iloc[-2]) == (action=="LONG"))
-        if not lh_aligned: print("HTF not aligned"); return
-        lp=state.get("last_signal_price",0)
-        if lp and abs(cur-lp)>15: print("Late signal drift"); return
-        if existing: return
-        entry=cur
-        av2=atr(h1); av2=max(av2,15)
-        if action=="LONG": sl,tp1,tp2,tp3=cur-av2,cur+av2,cur+av2*1.5,cur+av2*2
-        else: sl,tp1,tp2,tp3=cur+av2,cur-av2,cur-av2*1.5,cur-av2*2
-        state["position"]={"side":action,"entry":entry,"sl":round(sl,2),"tp1":round(tp1,2),
-                           "tp2":round(tp2,2),"tp3":round(tp3,2),"tp_hits":[],"warn_hits":[],"opened_at":now_str}
-        state["last_signal_price"]=cur; state["last_signal_time"]=now_str
-        save_state(state)
-        kz=get_kz()
-        if action=="LONG": text="🟢 BUY GOLD"
-        else: text="🔴 SELL GOLD"
-        text+="\n\nEntry: "+str(round(entry,2))+"\nSL: "+str(round(sl,2))
-        text+="\n\nTP1: "+str(round(tp1,2))+"\nTP2: "+str(round(tp2,2))+"\nTP3: "+str(round(tp3,2))
-        text+="\n\nDate: "+fmt_d(now_utc)+"\nTime: "+fmt_t(now_utc)+"\nSession: "+session
-        text+="\nMode: Bull "+str(bS)+" | Bear "+str(sS)
-        if liq["nB"]: text+="\nLiq Above: "+str(liq["nB"])
-        if liq["nS"]: text+="\nLiq Below: "+str(liq["nS"])
-        if kz: text+="\n⚡ "+kz
-        if pre: text+="\n\n⚠️ "+pre
-        if nd: text+="\n📅 "+", ".join(nd)
-        send(text)
+    if action=="LONG": text="🟢 BUY GOLD"
+    else: text="🔴 SELL GOLD"
+    text+="\n\nEntry: "+str(round(entry,2))+"\nSL: "+str(round(sl,2))
+    text+="\n\nTP1: "+str(round(tp1,2))+"\nTP2: "+str(round(tp2,2))+"\nTP3: "+str(round(tp3,2))
+    text+="\n\nDate: "+fmt_d(now_utc)+"\nTime: "+fmt_t(now_utc)+"\nSession: "+session
+    text+="\nMode: Bull "+str(bS)+" | Bear "+str(sS)
+    if liq["nB"]: text+="\nLiq Above: "+str(liq["nB"])
+    if liq["nS"]: text+="\nLiq Below: "+str(liq["nS"])
+    if kz: text+="\n⚡ "+kz
+    if pre: text+="\n\n⚠️ "+pre
+    if nd: text+="\n📅 "+", ".join(nd)
+    send(text)
 
 
 if __name__ == "__main__":
