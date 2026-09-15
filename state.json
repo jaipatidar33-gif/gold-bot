@@ -7,7 +7,9 @@
     "tp2": 4267.89,
     "tp3": 4257.75,
     "tp_hits": [],
-    "warn_hits": [],
+    "warn_hits": [
+      1
+    ],
     "opened_at": "2026-09-14 20:59 UTC"
   },
   "counter": null,
