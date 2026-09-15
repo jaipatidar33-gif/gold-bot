@@ -1,17 +1,14 @@
 {
   "position": null,
-  "last_session": "TOKYO",
-  "session_open_time": "2026-09-15 03:44 UTC",
-  "session_high": 4308.85901,
-  "session_low": 4299.78071,
+  "last_session": "",
+  "session_open_time": "",
+  "session_high": null,
+  "session_low": null,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
   "prev_l": {},
-  "session_open_price": {
-    "TOKYO": 4308.85901
-  },
-  "session_range": {},
+  "session_open_price": {},
   "exhaust_alerted": "",
   "last_hold_msg": "",
   "last_signal_price": 0,
@@ -21,13 +18,16 @@
   "daily_loss": 0,
   "wins": 0,
   "losses": 0,
-  "today_date": "2026-09-15",
+  "today_date": "",
   "session_alerted": "",
-  "open_alerted": "",
   "close_alerted": "",
-  "sweep_done": "",
   "neutral_alerted": "",
+  "last_neutral_msg": "",
   "last_1m_check": "",
   "last_big_candle": "",
-  "loss_streak": 0
+  "loss_streak": 0,
+  "killzone_alerted": "",
+  "sweep_done": "",
+  "last_high": 0,
+  "last_low": 0
 }
