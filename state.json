@@ -10,10 +10,10 @@
     "warn_hits": [],
     "opened_at": "2026-09-16 14:43 UTC"
   },
-  "last_session": "NY_OVERLAP",
-  "session_open_time": "2026-09-16 12:19 UTC",
-  "session_high": 4353.69411,
-  "session_low": 4333.13112,
+  "last_session": "NEWYORK",
+  "session_open_time": "2026-09-16 16:19 UTC",
+  "session_high": 4349.71727,
+  "session_low": 4349.71727,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
@@ -22,7 +22,8 @@
     "TOKYO": 4337.45391,
     "LONDON": 4330.12904,
     "NY_OVERLAP": 4341.21988,
-    "SYDNEY": 4285.04092
+    "SYDNEY": 4285.04092,
+    "NEWYORK": 4349.71727
   },
   "exhaust_alerted": "",
   "last_hold_msg": "2026-09-16 15:42 UTC",
