@@ -1,16 +1,16 @@
 {
   "position": null,
-  "last_session": "TOKYO",
-  "session_open_time": "2026-09-17 03:15 UTC",
-  "session_high": 4330.69161,
-  "session_low": 4283.756,
+  "last_session": "LONDON",
+  "session_open_time": "2026-09-17 09:19 UTC",
+  "session_high": 4312.76146,
+  "session_low": 4312.76146,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
   "prev_l": {},
   "session_open_price": {
     "TOKYO": 4283.756,
-    "LONDON": 4330.12904,
+    "LONDON": 4312.76146,
     "NY_OVERLAP": 4341.21988,
     "SYDNEY": 4263.48327,
     "NEWYORK": 4349.71727
