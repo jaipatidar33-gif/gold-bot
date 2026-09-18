@@ -26,7 +26,7 @@
   "losses": 1,
   "today_date": "2026-09-18",
   "session_alerted": "",
-  "close_alerted": "",
+  "close_alerted": "2026-09-18",
   "neutral_alerted": "",
   "last_neutral_msg": "2026-09-18 19:44 UTC",
   "last_neutral_bias": "",
