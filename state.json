@@ -1,9 +1,9 @@
 {
   "position": null,
-  "last_session": "NEWYORK",
-  "session_open_time": "2026-09-18 16:04 UTC",
-  "session_high": 4394.83168,
-  "session_low": 4356.72897,
+  "last_session": "SYDNEY",
+  "session_open_time": "2026-09-18 21:04 UTC",
+  "session_high": 4380.00964,
+  "session_low": 4380.00964,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
@@ -12,7 +12,7 @@
     "TOKYO": 4348.77147,
     "LONDON": 4396.37739,
     "NY_OVERLAP": 4375.60165,
-    "SYDNEY": 4341.40835,
+    "SYDNEY": 4380.00964,
     "NEWYORK": 4356.72897
   },
   "exhaust_alerted": "",
