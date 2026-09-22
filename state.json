@@ -7,12 +7,14 @@
     "tp2": 4327.1,
     "tp3": 4317.66,
     "tp_hits": [],
-    "warn_hits": [],
+    "warn_hits": [
+      1
+    ],
     "opened_at": "2026-09-22 21:49 UTC"
   },
   "last_session": "SYDNEY",
   "session_open_time": "2026-09-22 21:16 UTC",
-  "session_high": 4361.099,
+  "session_high": 4362.62106,
   "session_low": 4355.4007,
   "session_h": {},
   "session_l": {},
