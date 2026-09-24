@@ -1,14 +1,14 @@
 {
   "position": {
-    "side": "SHORT",
-    "entry": 4271.86125,
-    "sl": 4291.86125,
-    "tp1": 4251.86125,
-    "tp2": 4241.86125,
-    "tp3": 4231.86125,
+    "side": "LONG",
+    "entry": 4272.77388,
+    "sl": 4252.77388,
+    "tp1": 4292.77388,
+    "tp2": 4302.77388,
+    "tp3": 4312.77388,
     "tp_hits": [],
     "warn_hits": [],
-    "opened_at": "2026-09-24 18:46 UTC"
+    "opened_at": "2026-09-24 19:00 UTC"
   },
   "last_session": "NEWYORK",
   "session_open_time": "2026-09-24 16:53 UTC",
@@ -29,7 +29,7 @@
   "last_hold_msg": "2026-09-24 18:02 UTC",
   "last_signal_price": 4355.4007,
   "last_signal_time": "2026-09-22 21:49 UTC",
-  "flip_count": 2,
+  "flip_count": 3,
   "last_sl_time": "2026-09-16 18:26 UTC",
   "daily_loss": 0,
   "wins": 0,
