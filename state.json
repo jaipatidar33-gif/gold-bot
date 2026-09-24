@@ -7,13 +7,16 @@
     "tp2": 4239.85482,
     "tp3": 4229.85482,
     "tp_hits": [],
-    "warn_hits": [],
+    "warn_hits": [
+      1,
+      2
+    ],
     "opened_at": "2026-09-24 12:18 UTC"
   },
-  "last_session": "LONDON",
-  "session_open_time": "2026-09-24 09:20 UTC",
-  "session_high": 4264.21048,
-  "session_low": 4254.23296,
+  "last_session": "NY_OVERLAP",
+  "session_open_time": "2026-09-24 13:00 UTC",
+  "session_high": 4282.47184,
+  "session_low": 4282.47184,
   "session_h": {},
   "session_l": {},
   "prev_h": {},
@@ -21,7 +24,7 @@
   "session_open_price": {
     "TOKYO": 4287.79693,
     "LONDON": 4264.21048,
-    "NY_OVERLAP": 4314.99461,
+    "NY_OVERLAP": 4282.47184,
     "SYDNEY": 4286.87787,
     "NEWYORK": 4283.38902
   },
@@ -29,7 +32,7 @@
   "last_hold_msg": "2026-09-24 11:32 UTC",
   "last_signal_price": 4355.4007,
   "last_signal_time": "2026-09-22 21:49 UTC",
-  "flip_count": 4,
+  "flip_count": 0,
   "last_sl_time": "2026-09-16 18:26 UTC",
   "daily_loss": 0,
   "wins": 0,
