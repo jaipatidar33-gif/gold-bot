@@ -7,7 +7,9 @@
     "tp2": 4226.58707,
     "tp3": 4216.58707,
     "tp_hits": [],
-    "warn_hits": [],
+    "warn_hits": [
+      1
+    ],
     "opened_at": "2026-09-24 10:35 UTC"
   },
   "last_session": "LONDON",
