@@ -1,14 +1,14 @@
 {
   "position": {
-    "side": "LONG",
-    "entry": 4298.48693,
-    "sl": 4278.48693,
-    "tp1": 4318.48693,
-    "tp2": 4328.48693,
-    "tp3": 4338.48693,
+    "side": "SHORT",
+    "entry": 4299.22614,
+    "sl": 4319.22614,
+    "tp1": 4279.22614,
+    "tp2": 4269.22614,
+    "tp3": 4259.22614,
     "tp_hits": [],
     "warn_hits": [],
-    "opened_at": "2026-09-24 01:19 UTC"
+    "opened_at": "2026-09-24 01:34 UTC"
   },
   "last_session": "SYDNEY",
   "session_open_time": "2026-09-23 21:18 UTC",
@@ -29,7 +29,7 @@
   "last_hold_msg": "2026-09-24 01:00 UTC",
   "last_signal_price": 4355.4007,
   "last_signal_time": "2026-09-22 21:49 UTC",
-  "flip_count": 1,
+  "flip_count": 2,
   "last_sl_time": "2026-09-16 18:26 UTC",
   "daily_loss": 0,
   "wins": 0,
