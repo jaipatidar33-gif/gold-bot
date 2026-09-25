@@ -1,22 +1,8 @@
 {
-  "position": {
-    "side": "SHORT",
-    "entry": 4272.77388,
-    "sl": 4292.77388,
-    "tp1": 4252.77388,
-    "tp2": 4242.77388,
-    "tp3": 4232.77388,
-    "tp_hits": [],
-    "warn_hits": [
-      1,
-      2,
-      3
-    ],
-    "opened_at": "2026-09-24 23:32 UTC"
-  },
+  "position": null,
   "last_session": "SYDNEY",
   "session_open_time": "2026-09-24 21:14 UTC",
-  "session_high": 4292.58242,
+  "session_high": 4294.97917,
   "session_low": 4266.02961,
   "session_h": {},
   "session_l": {},
@@ -34,10 +20,10 @@
   "last_signal_price": 4355.4007,
   "last_signal_time": "2026-09-22 21:49 UTC",
   "flip_count": 4,
-  "last_sl_time": "2026-09-16 18:26 UTC",
-  "daily_loss": 0,
+  "last_sl_time": "2026-09-25 01:44 UTC",
+  "daily_loss": 20.0,
   "wins": 0,
-  "losses": 1,
+  "losses": 2,
   "today_date": "2026-09-25",
   "session_alerted": "",
   "close_alerted": "ny_2026-09-21",
