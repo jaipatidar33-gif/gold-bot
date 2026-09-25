@@ -9,13 +9,14 @@
     "tp_hits": [],
     "warn_hits": [
       1,
-      2
+      2,
+      3
     ],
     "opened_at": "2026-09-24 23:32 UTC"
   },
   "last_session": "SYDNEY",
   "session_open_time": "2026-09-24 21:14 UTC",
-  "session_high": 4283.756,
+  "session_high": 4291.10882,
   "session_low": 4266.02961,
   "session_h": {},
   "session_l": {},
